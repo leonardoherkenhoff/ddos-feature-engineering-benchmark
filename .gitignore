@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+env/
+venv/
+
+# Dados (Nunca subir!)
+*.pcap
+*.pcapng
+*.csv
+*.json
+*.log
+data/raw/*
+data/processed/*
+
+# IDE
+.vscode/
+.idea/
+
+# Manter pastas vazias
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!results/figures/.gitkeep
