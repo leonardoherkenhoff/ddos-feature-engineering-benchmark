@@ -58,7 +58,7 @@ python src/extraction/al_wrapper.py
 Sanitize the raw outputs and apply topological labeling.
 
 ```bash
-python src/preprocessing/topological_labeler.py
+python src/preprocessing/ntl_labeler.py
 python src/preprocessing/al_labeler.py
 ```
 *(Copy the baseline CICFlowMeter CSVs directly to `data/processed/CIC/` if already extracted).*
