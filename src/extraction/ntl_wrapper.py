@@ -40,6 +40,32 @@ CHUNK_SIZE = 50000        # Max packets per chunk to ensure RAM stability
 NTL_EXEC = "ntlflowlyzer" 
 
 
+def get_packet_count(pcap_files):
+
+    total = 0
+
+    for pcap in pcap_files:
+
+        try:
+
+            output = subprocess.check_output(['capinfos', '-c', pcap], text=True)
+
+            for line in output.split('\n'):
+
+                if 'Number of packets:' in line:
+
+                    val = line.split(':')[1].strip().replace(',', '')
+
+                    total += int(val)
+
+        except Exception:
+
+            pass
+
+    return total
+
+
+
 def run_cmd(cmd):
 
     """Executes a shell command silently."""
@@ -165,6 +191,52 @@ def process_attack(input_pcap_dir, output_csv_dir, attack_name):
         print(f"✅ DONE: {final_csv}")
 
         shutil.rmtree(work_dir, ignore_errors=True)
+
+
+
+    # NEW: end profiling
+
+    end_time = time.time()
+
+    elapsed = end_time - start_time
+
+    pps = total_packets / elapsed if elapsed > 0 else 0
+
+    
+
+    monitor_proc.terminate()
+
+    try:
+
+        monitor_proc.wait(timeout=5)
+
+    except:
+
+        monitor_proc.kill()
+
+        
+
+    benchmark_log = os.path.join(output_csv_dir, f"benchmark_{attack_name}.json")
+
+    with open(benchmark_log, 'w') as f:
+
+        json.dump({
+
+            "attack": attack_name, 
+
+            "total_packets": total_packets, 
+
+            "time_seconds": elapsed, 
+
+            "pps": pps,
+
+            "monitor_file": monitor_csv
+
+        }, f, indent=4)
+
+        
+
+    print(f"📊 Benchmark: {total_packets} packets | {elapsed:.2f}s | {pps:.2f} pps")
 
 
 if __name__ == "__main__":

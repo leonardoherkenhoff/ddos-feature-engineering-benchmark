@@ -1,0 +1,88 @@
+import time
+import psutil
+import csv
+import argparse
+import sys
+
+def monitor_process(pid, output_csv, interval=1.0):
+    """
+    Monitors CPU and Memory usage of a process and its children.
+    Saves the data and reports the max/avg usage.
+    """
+    try:
+        parent = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        print(f"❌ Process {pid} not found.")
+        sys.exit(1)
+
+    print(f"🔍 Monitoring PID {pid} (Command: {' '.join(parent.cmdline()[:2])})...")
+    
+    metrics = []
+    
+    try:
+        with open(output_csv, 'w', newline='') as csvfile:
+            fieldnames = ['timestamp', 'cpu_percent', 'ram_mb']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+
+            while parent.is_running() and parent.status() != psutil.STATUS_ZOMBIE:
+                children = parent.children(recursive=True)
+                processes = [parent] + children
+                
+                total_cpu = 0.0
+                total_ram_mb = 0.0
+                
+                for p in processes:
+                    try:
+                        total_cpu += p.cpu_percent(interval=None)
+                        total_ram_mb += p.memory_info().rss / (1024 * 1024)
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+
+                row = {
+                    'timestamp': time.time(),
+                    'cpu_percent': round(total_cpu, 2),
+                    'ram_mb': round(total_ram_mb, 2)
+                }
+                writer.writerow(row)
+                csvfile.flush()
+                metrics.append(row)
+                
+                time.sleep(interval)
+                
+    except KeyboardInterrupt:
+        print("\n🛑 Monitoring interrupted.")
+    finally:
+        if not metrics:
+            print("⚠️ No metrics collected.")
+            return
+
+        max_cpu = max(m['cpu_percent'] for m in metrics)
+        avg_cpu = sum(m['cpu_percent'] for m in metrics) / len(metrics)
+        max_ram = max(m['ram_mb'] for m in metrics)
+        avg_ram = sum(m['ram_mb'] for m in metrics) / len(metrics)
+        
+        print("\n📊 --- Monitoring Summary ---")
+        print(f"Max CPU Usage: {max_cpu}%")
+        print(f"Avg CPU Usage: {avg_cpu:.2f}%")
+        print(f"Max RAM Usage: {max_ram} MB")
+        print(f"Avg RAM Usage: {avg_ram:.2f} MB")
+        print(f"Data saved to {output_csv}")
+
+        # Summary file beside CSV
+        summary_file = output_csv.replace('.csv', '_summary.txt')
+        with open(summary_file, 'w') as f:
+            f.write(f"Max_CPU_Percent={max_cpu}\n")
+            f.write(f"Avg_CPU_Percent={avg_cpu:.2f}\n")
+            f.write(f"Max_RAM_MB={max_ram}\n")
+            f.write(f"Avg_RAM_MB={avg_ram:.2f}\n")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Monitor process CPU/RAM over time")
+    parser.add_argument("pid", type=int, help="PID of the process to monitor")
+    parser.add_argument("output", type=str, help="Output CSV file path")
+    parser.add_argument("--interval", type=float, default=1.0, help="Monitoring interval in seconds")
+    
+    args = parser.parse_args()
+    monitor_process(args.pid, args.output, args.interval)
