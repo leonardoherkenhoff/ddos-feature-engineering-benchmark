@@ -146,6 +146,14 @@ def process_attack(input_pcap_dir, output_csv_dir, attack_name):
     pcaps = glob.glob(os.path.join(input_pcap_dir, "*.pcap"))
 
     if not pcaps: return
+    
+    start_time = time.time()
+    monitor_csv = os.path.join(output_csv_dir, f"monitor_{attack_name}.csv")
+    monitor_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "monitor.py")
+    import sys
+    monitor_proc = subprocess.Popen([sys.executable, monitor_script, str(os.getpid()), monitor_csv])
+    
+    total_packets = get_packet_count(pcaps)
 
     run_cmd(f"mergecap -F pcap -w '{merged_pcap}' " + " ".join([f"'{p}'" for p in pcaps]))
 
@@ -199,22 +207,13 @@ def process_attack(input_pcap_dir, output_csv_dir, attack_name):
     end_time = time.time()
 
     elapsed = end_time - start_time
-
     pps = total_packets / elapsed if elapsed > 0 else 0
-
     
-
     monitor_proc.terminate()
-
     try:
-
         monitor_proc.wait(timeout=5)
-
     except:
-
         monitor_proc.kill()
-
-        
 
     benchmark_log = os.path.join(output_csv_dir, f"benchmark_{attack_name}.json")
 

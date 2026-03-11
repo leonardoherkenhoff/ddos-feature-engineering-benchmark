@@ -57,7 +57,8 @@ def run_extraction():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     monitor_csv = os.path.join(OUTPUT_DIR, "monitor_alflowlyzer.csv")
     monitor_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "monitor.py")
-    monitor_proc = subprocess.Popen(["python", monitor_script, str(os.getpid()), monitor_csv])
+    import sys
+    monitor_proc = subprocess.Popen([sys.executable, monitor_script, str(os.getpid()), monitor_csv])
     
     print("Counting packets...")
     total_packets = get_packet_count(pcaps)
