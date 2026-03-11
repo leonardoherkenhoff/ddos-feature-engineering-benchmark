@@ -37,7 +37,7 @@ THREADS_PER_WORKER = 4
 
 CHUNK_SIZE = 50000        # Max packets per chunk to ensure RAM stability
 
-NTL_EXEC = "ntlflowlyzer" 
+NTL_EXEC = os.environ.get("NTL_EXEC", "ntlflowlyzer")
 
 
 def get_packet_count(pcap_files):
@@ -45,21 +45,13 @@ def get_packet_count(pcap_files):
     total = 0
 
     for pcap in pcap_files:
-
         try:
-
-            output = subprocess.check_output(['capinfos', '-c', pcap], text=True)
-
-            for line in output.split('\n'):
-
+            result = subprocess.run(['capinfos', '-c', pcap], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            for line in result.stdout.split('\n'):
                 if 'Number of packets:' in line:
-
                     val = line.split(':')[1].strip().replace(',', '')
-
                     total += int(val)
-
         except Exception:
-
             pass
 
     return total
@@ -69,8 +61,11 @@ def get_packet_count(pcap_files):
 def run_cmd(cmd):
 
     """Executes a shell command silently."""
-
-    subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Command failed: {cmd}\nSTDERR: {e.stderr}")
+        raise
 
 
 def worker_task(args):
@@ -106,13 +101,13 @@ def worker_task(args):
         
 
     try:
-
-        subprocess.run([NTL_EXEC, "-c", json_config], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
+        subprocess.run([NTL_EXEC, "-c", json_config], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
         return True
-
-    except:
-
+    except subprocess.CalledProcessError as e:
+        print(f"❌ NTL Error on {pcap_chunk}:\nSTDERR={e.stderr}")
+        return False
+    except Exception as e:
+        print(f"❌ NTL Exception on {pcap_chunk}: {e}")
         return False
 
 

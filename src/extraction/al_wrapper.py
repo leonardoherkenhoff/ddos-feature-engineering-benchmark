@@ -16,7 +16,7 @@ Executes extraction in parallel (one file per process).
 INPUT_DIR = "./data/raw/PCAP"
 OUTPUT_DIR = "./data/interim/AL_RAW"
 NUM_WORKERS = 10
-AL_EXEC = "alflowlyzer"
+AL_EXEC = os.environ.get("AL_EXEC", "alflowlyzer")
 
 def process_file(args):
     """Worker function to process a single PCAP file via ALFlowLyzer."""
@@ -30,17 +30,19 @@ def process_file(args):
     cmd = [AL_EXEC, "-f", pcap_path, "-o", output_dir + "/"]
     try:
         # Enforce timeout to prevent hangs on malformed packets
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, timeout=600)
         return f"✅ Success: {filename}"
-    except:
-        return f"❌ Error: {filename}"
+    except subprocess.CalledProcessError as e:
+        return f"❌ Error: {filename} - {e.stderr}"
+    except Exception as e:
+        return f"❌ Error System: {filename} - {e}"
 
 def get_packet_count(pcap_files):
     total = 0
     for pcap in pcap_files:
         try:
-            output = subprocess.check_output(['capinfos', '-c', pcap], text=True)
-            for line in output.split('\n'):
+            result = subprocess.run(['capinfos', '-c', pcap], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            for line in result.stdout.split('\n'):
                 if 'Number of packets:' in line:
                     val = line.split(':')[1].strip().replace(',', '')
                     total += int(val)

@@ -17,8 +17,8 @@ def get_packet_count(pcap_files):
     total = 0
     for pcap in pcap_files:
         try:
-            output = subprocess.check_output(['capinfos', '-c', pcap], text=True)
-            for line in output.split('\n'):
+            result = subprocess.run(['capinfos', '-c', pcap], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            for line in result.stdout.split('\n'):
                 if 'Number of packets:' in line:
                     val = line.split(':')[1].strip().replace(',', '')
                     total += int(val)
@@ -53,10 +53,12 @@ def run_extraction():
         
         cmd = [CIC_EXEC, pcap, target_dir]
         try:
-            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
             print(f"✅ Success: {filename}")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Error processing {filename} (Code {e.returncode}):\n{e.stderr}")
         except Exception as e:
-            print(f"❌ Error processing {filename}")
+            print(f"❌ Exception processing {filename}: {e}")
 
     end_time = time.time()
     elapsed = end_time - start_time
