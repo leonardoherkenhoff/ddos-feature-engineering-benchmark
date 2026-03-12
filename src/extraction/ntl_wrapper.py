@@ -41,18 +41,29 @@ NTL_EXEC = os.environ.get("NTL_EXEC", "ntlflowlyzer")
 
 
 def get_packet_count(pcap_files):
-
+    import re
     total = 0
 
     for pcap in pcap_files:
         try:
-            result = subprocess.run(['capinfos', '-c', pcap], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            result = subprocess.run(['capinfos', '-c', pcap], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            local_count = 0
             for line in result.stdout.split('\n'):
                 if 'Number of packets:' in line:
-                    val = line.split(':')[1].strip().replace(',', '')
-                    total += int(val)
-        except Exception:
-            pass
+                    val = line.split(':')[1]
+                    val_clean = re.sub(r'\D', '', val)
+                    if val_clean:
+                        local_count = int(val_clean)
+                    break
+                    
+            if local_count == 0 and result.stderr:
+                err_match = re.search(r'after reading (\d+) packets', result.stderr)
+                if err_match:
+                    local_count = int(err_match.group(1))
+            
+            total += local_count
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to parse packet count for {pcap}: {e}")
 
     return total
 
@@ -233,9 +244,22 @@ def process_attack(input_pcap_dir, output_csv_dir, attack_name):
     print(f"📊 Benchmark: {total_packets} packets | {elapsed:.2f}s | {pps:.2f} pps")
 
 
+def run_extraction():
+    print(f"=== NTLFlowLyzer Pipeline ===")
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    # Collect all directories containing at least one PCAP
+    pcap_dirs = set()
+    for pcap in glob.glob(os.path.join(INPUT_DIR, "**", "*.pcap"), recursive=True):
+        pcap_dirs.add(os.path.dirname(pcap))
+        
+    for pcap_dir in sorted(pcap_dirs):
+        # We can construct an attack name based on the directory path
+        rel_path = os.path.relpath(pcap_dir, INPUT_DIR)
+        attack_name = rel_path.replace(os.path.sep, "_")
+        target_dir = os.path.join(OUTPUT_DIR, rel_path)
+        process_attack(pcap_dir, target_dir, attack_name)
+
 if __name__ == "__main__":
-
-    # Example usage logic here
-
-    pass
+    run_extraction()
 

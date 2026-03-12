@@ -37,7 +37,8 @@ ddos-benchmark/
 ## 🔧 Step-by-Step Reproduction Guide
 
 **1. Environment Setup**
-Install dependencies. *Note: You must have `ntlflowlyzer` and `alflowlyzer` binaries installed and available in your system PATH.*
+Install dependencies. 
+*Note: You must have `cicflowmeter`, `ntlflowlyzer`, and `alflowlyzer` binaries installed and available in your system PATH (or properly exported as environmental variables `CIC_EXEC`, `NTL_EXEC`, `AL_EXEC`).*
 
 ```bash
 pip install -r requirements.txt
@@ -47,21 +48,22 @@ pip install -r requirements.txt
 Download the original CICDDoS2019 PCAP files and place them inside `data/raw/PCAP/` preserving the day-based folders (e.g., `01-12/` and `03-11/`).
 
 **3. Feature Extraction**
-Run the wrappers to slice PCAPs and extract raw features in parallel.
+Run the wrappers to slice PCAPs and extract raw features. They will process the attacks, measure computational overhead, and consolidate fragmented files into a single CSV per attack class.
 
 ```bash
-python src/extraction/ntl_wrapper.py
-python src/extraction/al_wrapper.py
+python3 src/extraction/cic_wrapper.py
+python3 src/extraction/ntl_wrapper.py
+python3 src/extraction/al_wrapper.py
 ```
 
 **4. Preprocessing & Ground Truth Correction**
-Sanitize the raw outputs and apply topological labeling.
+Sanitize the raw outputs and apply topological labeling (Ground Truth relies strictly on the attacker's Source IP).
 
 ```bash
-python src/preprocessing/ntl_labeler.py
-python src/preprocessing/al_labeler.py
+python3 src/preprocessing/cic_labeler.py
+python3 src/preprocessing/ntl_labeler.py
+python3 src/preprocessing/al_labeler.py
 ```
-*(Copy the baseline CICFlowMeter CSVs directly to `data/processed/CIC/` if already extracted).*
 
 **5. Benchmark Execution**
 Run the Random Forest analysis to output F1-Scores and generate Confusion Matrices.

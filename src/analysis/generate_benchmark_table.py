@@ -19,9 +19,14 @@ def generate_table():
         with open(b_file, 'r') as f:
             data = json.load(f)
             
-        tool_name = data.get("tool", data.get("attack", "Unknown"))
-        if "ntl" in b_file.lower() or "temp_" in b_file:
-            tool_name = "NTLFlowLyzer"
+        tool_name = data.get("tool", "Unknown")
+        if tool_name == "Unknown":
+            if "ntl" in b_file.lower() or "temp_" in b_file:
+                tool_name = "NTLFlowLyzer"
+            elif "alflowlyzer" in b_file.lower():
+                tool_name = "ALFlowLyzer"
+            elif "cic" in b_file.lower():
+                tool_name = "CICFlowMeter"
             
         monitor_file = data.get("monitor_file")
         max_ram = 0
