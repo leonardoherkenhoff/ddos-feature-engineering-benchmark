@@ -14,7 +14,7 @@ INPUT_DIR = "./data/interim/AL_RAW"
 OUTPUT_DIR = "./data/processed/AL"
 ATTACKER_IP = "172.16.0.5"
 
-def clean_and_label(df, filename):
+def clean_and_label(df, filepath):
     """Replaces extraction error artifacts with zeros and applies topological rule."""
     # Standardize column names
     df.columns = [c.strip().lower().replace(' ', '_') for c in df.columns]
@@ -36,7 +36,8 @@ def clean_and_label(df, filename):
         return df
     
     src_col = src_cols[0]
-    attack_name = os.path.basename(filename).replace('.csv', '')
+    # Extract attack name from parent directory name (e.g., .../01-12/DrDoS_DNS/file.csv -> DrDoS_DNS)
+    attack_name = os.path.basename(os.path.dirname(filepath))
     if "DrDoS_" not in attack_name and "DNS" in attack_name: attack_name = "DrDoS_DNS"
         
     df['Label'] = np.where(df[src_col] == ATTACKER_IP, attack_name, 'BENIGN')
@@ -56,7 +57,7 @@ def main():
             temp_df = pd.read_csv(f, on_bad_lines='skip', low_memory=False)
             if temp_df.empty: continue
                 
-            clean_df = clean_and_label(temp_df, filename)
+            clean_df = clean_and_label(temp_df, f)
             
             # Memory optimization before save
             for col in clean_df.select_dtypes(include=['float64']).columns:

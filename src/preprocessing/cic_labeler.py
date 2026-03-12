@@ -19,7 +19,8 @@ def process_file_auto(file_path):
     """Cleans headers and applies topological labeling in chunks."""
     try:
         filename = os.path.basename(file_path)
-        attack_name = filename.replace('.csv', '')
+        # Extract attack name from parent directory name (e.g., .../01-12/DrDoS_DNS/file.csv -> DrDoS_DNS)
+        attack_name = os.path.basename(os.path.dirname(file_path))
         
         rel_path = os.path.relpath(os.path.dirname(file_path), INPUT_DIR)
         output_dir = os.path.join(OUTPUT_DIR, rel_path)

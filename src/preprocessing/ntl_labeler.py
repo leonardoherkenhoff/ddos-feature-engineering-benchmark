@@ -176,8 +176,8 @@ def process_file_auto(file_path):
     try:
 
         filename = os.path.basename(file_path)
-
-        attack_name = filename.replace('_semLabel.csv', '')
+        # Extract attack name from parent directory name (e.g., .../01-12/DrDoS_DNS/file.csv -> DrDoS_DNS)
+        attack_name = os.path.basename(os.path.dirname(file_path))
 
         
 
