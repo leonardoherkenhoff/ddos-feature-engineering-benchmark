@@ -36,7 +36,7 @@ def process_file(args):
 
     cmd = [AL_EXEC, "-c", json_config]
     try:
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, timeout=600)
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
         return f"✅ Success: {filename}"
     except subprocess.CalledProcessError as e:
         return f"❌ Error: {filename} - {e.stderr}"
