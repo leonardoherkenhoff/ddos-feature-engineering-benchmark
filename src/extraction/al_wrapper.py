@@ -13,7 +13,9 @@ AL_EXEC = os.environ.get("AL_EXEC", "alflowlyzer")
 
 def process_file(args):
     """Worker function to process a single PCAP file via ALFlowLyzer."""
-    pcap_path, output_dir = args
+    pcap_raw_path, output_dir = args
+    pcap_path = os.path.abspath(pcap_raw_path)
+    output_dir = os.path.abspath(output_dir)
     filename = os.path.basename(pcap_path)
     expected_csv = os.path.join(output_dir, filename.replace(".pcap", ".csv"))
     json_config = os.path.join(output_dir, filename.replace(".pcap", ".json"))
