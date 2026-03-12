@@ -131,13 +131,6 @@ def process_attack(input_pcap_dir, output_csv_dir, attack_name):
     work_dir = os.path.join(output_csv_dir, f"temp_{attack_name}")
 
 
-    if os.path.exists(final_csv):
-
-        print(f"✅ {attack_name} already exists. Skipping.")
-
-        return
-
-
     print(f"\n🚀 STARTING NTL EXTRACTION: {attack_name}...")
 
     os.makedirs(work_dir, exist_ok=True)

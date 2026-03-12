@@ -19,9 +19,6 @@ def process_file(args):
     filename = os.path.basename(pcap_path)
     expected_csv = os.path.join(output_dir, filename.replace(".pcap", ".csv"))
     json_config = os.path.join(output_dir, filename.replace(".pcap", ".json"))
-    
-    if os.path.exists(expected_csv) and os.path.getsize(expected_csv) > 1000:
-        return f"⏭️  Skipped: {filename}"
 
     conf = {
         "pcap_file_address": pcap_path,
