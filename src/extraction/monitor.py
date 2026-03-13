@@ -42,6 +42,11 @@ def monitor_process(pid, output_csv, interval=1.0):
                 
                 for p in processes:
                     try:
+                        # Initial call to cpu_percent to avoid 0.0 on first sample for new processes
+                        if not hasattr(p, '_cpu_initialized'):
+                            p.cpu_percent(interval=None)
+                            p._cpu_initialized = True
+                        
                         total_cpu += p.cpu_percent(interval=None)
                         total_ram_mb += p.memory_info().rss / (1024 * 1024)
                     except (psutil.NoSuchProcess, psutil.AccessDenied):

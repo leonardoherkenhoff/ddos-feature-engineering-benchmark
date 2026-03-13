@@ -30,7 +30,7 @@ def process_directory(target_dir, attack_name):
     # Find all CSVs in target_dir that don't match attack_name.csv
     final_csv = os.path.join(target_dir, f"{attack_name}.csv")
     csvs = [f for f in glob.glob(os.path.join(target_dir, "*.csv")) 
-            if f != final_csv and not f.startswith("monitor_") and \
+            if f != final_csv and not os.path.basename(f).startswith("monitor_") and \
                not os.path.basename(f).startswith(f"benchmark_")]
                
     if not csvs:
