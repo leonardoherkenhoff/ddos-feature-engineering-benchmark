@@ -17,6 +17,9 @@ data/processed/*
 .vscode/
 .idea/
 
+# Contexto local (nunca subir)
+AGENTS.md
+
 # Manter pastas vazias
 !data/raw/.gitkeep
 !data/processed/.gitkeep
