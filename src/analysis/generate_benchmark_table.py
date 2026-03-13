@@ -41,6 +41,16 @@ def generate_table():
                             max_ram = float(line.split('=')[1])
                         elif line.startswith("Avg_CPU_Percent"):
                             avg_cpu = float(line.split('=')[1])
+            
+            # Recovery: If summary missing or stats are 0, try reading the raw CSV
+            if (max_ram == 0 or avg_cpu == 0):
+                try:
+                    m_df = pd.read_csv(monitor_file)
+                    if not m_df.empty:
+                        max_ram = m_df['ram_mb'].max()
+                        avg_cpu = m_df['cpu_percent'].mean()
+                except Exception:
+                    pass
         
         results.append({
             "Extractor": tool_name,

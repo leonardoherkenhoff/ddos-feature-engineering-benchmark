@@ -3,12 +3,20 @@ import psutil
 import csv
 import argparse
 import sys
+import signal
 
 def monitor_process(pid, output_csv, interval=1.0):
     """
     Monitors CPU and Memory usage of a process and its children.
     Saves the data and reports the max/avg usage.
     """
+    def signal_handler(signum, frame):
+        print(f"\n📢 Received signal {signum}. Finalizing monitoring...")
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
     try:
         parent = psutil.Process(pid)
     except psutil.NoSuchProcess:
