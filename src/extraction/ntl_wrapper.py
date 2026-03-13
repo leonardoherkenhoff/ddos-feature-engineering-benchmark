@@ -187,12 +187,16 @@ def process_attack(input_pcap_dir, output_csv_dir, attack_name):
 
     if csv_parts:
 
+        first = True
         with open(final_csv, 'w') as outfile:
 
-            for csv in csv_parts:
+            for csv_part in csv_parts:
 
-                with open(csv, 'r') as infile:
-
+                with open(csv_part, 'r') as infile:
+                    header = infile.readline()
+                    if first:
+                        outfile.write(header)
+                        first = False
                     shutil.copyfileobj(infile, outfile)
 
         print(f"✅ DONE: {final_csv}")
@@ -220,7 +224,9 @@ def process_attack(input_pcap_dir, output_csv_dir, attack_name):
 
         json.dump({
 
-            "attack": attack_name, 
+            "attack": attack_name,
+
+            "tool": "NTLFlowLyzer",
 
             "total_packets": total_packets, 
 
