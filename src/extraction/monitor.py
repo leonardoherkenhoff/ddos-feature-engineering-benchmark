@@ -26,6 +26,7 @@ def monitor_process(pid, output_csv, interval=1.0):
     print(f"🔍 Monitoring PID {pid} (Command: {' '.join(parent.cmdline()[:2])})...")
     
     metrics = []
+    num_cpus = psutil.cpu_count(logical=True) or 1
     proc_cache = {}  # {pid: psutil.Process} — keeps same object across iterations for correct cpu_percent delta
     
     try:
@@ -75,7 +76,7 @@ def monitor_process(pid, output_csv, interval=1.0):
 
                 row = {
                     'timestamp': time.time(),
-                    'cpu_percent': round(total_cpu, 2),
+                    'cpu_percent': round(total_cpu / num_cpus, 2),
                     'ram_mb': round(total_ram_mb, 2)
                 }
                 writer.writerow(row)
