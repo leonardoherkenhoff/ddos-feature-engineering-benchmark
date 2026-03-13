@@ -26,8 +26,7 @@ def monitor_process(pid, output_csv, interval=1.0):
     print(f"🔍 Monitoring PID {pid} (Command: {' '.join(parent.cmdline()[:2])})...")
     
     metrics = []
-    num_cpus = psutil.cpu_count(logical=True) or 1
-    proc_cache = {}  # {pid: psutil.Process} — keeps same object across iterations for correct cpu_percent delta
+    proc_cache = {}  # {pid: psutil.Process} — used for per-process RAM tracking
     
     try:
         with open(output_csv, 'w', newline='') as csvfile:
@@ -35,9 +34,9 @@ def monitor_process(pid, output_csv, interval=1.0):
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
 
-            # Initial cpu_percent call on parent to seed the measurement baseline
+            # Seed system-wide cpu_percent baseline (first call always returns 0.0)
+            psutil.cpu_percent(interval=None)
             try:
-                parent.cpu_percent(interval=None)
                 proc_cache[parent.pid] = parent
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
@@ -45,7 +44,10 @@ def monitor_process(pid, output_csv, interval=1.0):
             while parent.is_running() and parent.status() != psutil.STATUS_ZOMBIE:
                 time.sleep(interval)
 
-                # Discover current children and seed new ones
+                # System-wide CPU: already normalized to 0-100% on any core count
+                total_cpu = psutil.cpu_percent(interval=None)
+
+                # Per-process RAM: discover children and sum RSS
                 try:
                     current_children = parent.children(recursive=True)
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -53,30 +55,21 @@ def monitor_process(pid, output_csv, interval=1.0):
 
                 for p in current_children:
                     if p.pid not in proc_cache:
-                        try:
-                            p.cpu_percent(interval=None)  # Seed baseline; reading discarded
-                            proc_cache[p.pid] = p
-                        except (psutil.NoSuchProcess, psutil.AccessDenied):
-                            pass
+                        proc_cache[p.pid] = p
 
-                # Measure all cached processes
-                total_cpu = 0.0
                 total_ram_mb = 0.0
                 dead_pids = []
-
                 for pid, p in proc_cache.items():
                     try:
-                        total_cpu += p.cpu_percent(interval=None)
                         total_ram_mb += p.memory_info().rss / (1024 * 1024)
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         dead_pids.append(pid)
-
                 for pid in dead_pids:
                     del proc_cache[pid]
 
                 row = {
                     'timestamp': time.time(),
-                    'cpu_percent': round(total_cpu / num_cpus, 2),
+                    'cpu_percent': round(total_cpu, 2),
                     'ram_mb': round(total_ram_mb, 2)
                 }
                 writer.writerow(row)
