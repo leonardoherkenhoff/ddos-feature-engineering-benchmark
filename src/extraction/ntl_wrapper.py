@@ -1,0 +1,269 @@
+
+import os
+
+import glob
+
+import subprocess
+
+import shutil
+
+import json
+
+from multiprocessing import Pool
+
+import time
+
+
+"""
+
+NTLFlowLyzer Orchestrator
+
+Extracts L3 (Network) and L4 (Transport) features from raw PCAPs.
+
+Implements a chunking strategy to prevent memory overflow during processing.
+
+"""
+
+
+# --- CONFIGURATION ---
+
+INPUT_DIR = "./data/raw/PCAP"
+
+OUTPUT_DIR = "./data/interim/NTL_RAW"
+
+NUM_WORKERS = 10          
+
+THREADS_PER_WORKER = 4    
+
+CHUNK_SIZE = 50000        # Max packets per chunk to ensure RAM stability
+
+NTL_EXEC = os.environ.get("NTL_EXEC", "ntlflowlyzer")
+
+
+def get_packet_count(pcap_files):
+    """Counts packets by reading PCAP binary headers directly.
+    Independent of capinfos output format, locale, or version."""
+    import struct
+    PCAP_MAGIC_LE = b'\xd4\xc3\xb2\xa1'
+    PCAP_MAGIC_BE = b'\xa1\xb2\xc3\xd4'
+    total = 0
+
+    for pcap in pcap_files:
+        try:
+            with open(pcap, 'rb') as f:
+                magic = f.read(4)
+                if magic not in (PCAP_MAGIC_LE, PCAP_MAGIC_BE):
+                    print(f"⚠️ Warning: {pcap} is not a standard PCAP file.")
+                    continue
+                little_endian = (magic == PCAP_MAGIC_LE)
+                f.read(20)  # skip rest of global header
+                count = 0
+                while True:
+                    hdr = f.read(16)
+                    if len(hdr) < 16:
+                        break
+                    endian = '<' if little_endian else '>'
+                    incl_len = struct.unpack(endian + 'I', hdr[8:12])[0]
+                    f.seek(incl_len, 1)
+                    count += 1
+                total += count
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to count packets for {pcap}: {e}")
+
+    return total
+
+
+
+def run_cmd(cmd):
+
+    """Executes a shell command silently."""
+    try:
+        subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Command failed: {cmd}\nSTDERR: {e.stderr}")
+        raise
+
+
+def worker_task(args):
+
+    """Worker function to process a single PCAP chunk via NTLFlowLyzer."""
+
+    pcap_chunk, csv_chunk, json_config = args
+
+    
+
+    # Generate temporary JSON config required by NTLFlowLyzer
+
+    conf = {
+
+        "pcap_file_address": pcap_chunk,
+
+        "output_file_address": csv_chunk,
+
+        "label": "BENIGN", # Dummy label. Replaced in preprocessing phase.
+
+        "number_of_threads": THREADS_PER_WORKER,
+
+        "feature_extractor_min_flows": 0,
+
+        "writer_min_rows": 0
+
+    }
+
+    with open(json_config, 'w') as f:
+
+        json.dump(conf, f)
+
+        
+
+    try:
+        subprocess.run([NTL_EXEC, "-c", json_config], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ NTL Error on {pcap_chunk}:\nSTDERR={e.stderr}")
+        return False
+    except Exception as e:
+        print(f"❌ NTL Exception on {pcap_chunk}: {e}")
+        return False
+
+
+def process_attack(input_pcap_dir, output_csv_dir, attack_name):
+
+    """Main pipeline: Merge PCAPs -> Split into chunks -> Extract features -> Concatenate."""
+
+    final_csv = os.path.join(output_csv_dir, f"{attack_name}.csv")
+
+    work_dir = os.path.join(output_csv_dir, f"temp_{attack_name}")
+
+
+    print(f"\n🚀 STARTING NTL EXTRACTION: {attack_name}...")
+
+    os.makedirs(work_dir, exist_ok=True)
+
+    os.makedirs(output_csv_dir, exist_ok=True)
+
+
+    # Step 1: Merge raw PCAPs
+
+    merged_pcap = os.path.join(work_dir, "full.pcap")
+
+    pcaps = glob.glob(os.path.join(input_pcap_dir, "*.pcap"))
+
+    if not pcaps: return
+    
+    start_time = time.time()
+    monitor_csv = os.path.join(output_csv_dir, f"monitor_{attack_name}.csv")
+    monitor_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "monitor.py")
+    import sys
+    monitor_proc = subprocess.Popen([sys.executable, monitor_script, str(os.getpid()), monitor_csv])
+    
+    total_packets = get_packet_count(pcaps)
+
+    run_cmd(f"mergecap -F pcap -w '{merged_pcap}' " + " ".join([f"'{p}'" for p in pcaps]))
+
+
+    # Step 2: Split into safe chunks
+
+    run_cmd(f"editcap -c {CHUNK_SIZE} -F pcap '{merged_pcap}' '{os.path.join(work_dir, 'chunk.pcap')}'")
+
+    chunks = sorted(glob.glob(os.path.join(work_dir, "chunk*.pcap")))
+
+
+    # Step 3: Parallel extraction
+
+    tasks = [(c, c.replace(".pcap", ".csv"), c.replace(".pcap", ".json")) for c in chunks]
+
+    with Pool(NUM_WORKERS) as pool:
+
+        results = list(pool.imap_unordered(worker_task, tasks))
+
+    
+
+    if results.count(True) < (len(chunks) * 0.99): 
+
+        print(f"   ❌ CRITICAL ERROR: High failure rate during extraction.")
+
+        return
+
+
+    # Step 4: Merge resulting CSVs
+
+    csv_parts = [f for f in sorted(glob.glob(os.path.join(work_dir, "chunk*.csv"))) if os.path.exists(f)]
+
+    if csv_parts:
+
+        first = True
+        with open(final_csv, 'w') as outfile:
+
+            for csv_part in csv_parts:
+
+                with open(csv_part, 'r') as infile:
+                    header = infile.readline()
+                    if first:
+                        outfile.write(header)
+                        first = False
+                    shutil.copyfileobj(infile, outfile)
+
+        print(f"✅ DONE: {final_csv}")
+
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+
+
+    # NEW: end profiling
+
+    end_time = time.time()
+
+    elapsed = end_time - start_time
+    pps = total_packets / elapsed if elapsed > 0 else 0
+    
+    monitor_proc.terminate()
+    try:
+        monitor_proc.wait(timeout=5)
+    except:
+        monitor_proc.kill()
+
+    benchmark_log = os.path.join(output_csv_dir, f"benchmark_{attack_name}.json")
+
+    with open(benchmark_log, 'w') as f:
+
+        json.dump({
+
+            "attack": attack_name,
+
+            "tool": "NTLFlowLyzer",
+
+            "total_packets": total_packets, 
+
+            "time_seconds": elapsed, 
+
+            "pps": pps,
+
+            "monitor_file": monitor_csv
+
+        }, f, indent=4)
+
+        
+
+    print(f"📊 Benchmark: {total_packets} packets | {elapsed:.2f}s | {pps:.2f} pps")
+
+
+def run_extraction():
+    print(f"=== NTLFlowLyzer Pipeline ===")
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    # Collect all directories containing at least one PCAP
+    pcap_dirs = set()
+    for pcap in glob.glob(os.path.join(INPUT_DIR, "**", "*.pcap"), recursive=True):
+        pcap_dirs.add(os.path.dirname(pcap))
+        
+    for pcap_dir in sorted(pcap_dirs):
+        # We can construct an attack name based on the directory path
+        rel_path = os.path.relpath(pcap_dir, INPUT_DIR)
+        attack_name = rel_path.replace(os.path.sep, "_")
+        target_dir = os.path.join(OUTPUT_DIR, rel_path)
+        process_attack(pcap_dir, target_dir, attack_name)
+
+if __name__ == "__main__":
+    run_extraction()
+
