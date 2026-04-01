@@ -31,33 +31,36 @@ def generate_detailed():
         monitor_file = data.get("monitor_file")
         max_ram = 0
         avg_cpu = 0
+        std_cpu = 0
+        var_cpu = 0
+        std_ram = 0
+        var_ram = 0
 
         if monitor_file and os.path.exists(monitor_file):
-            summary_file = monitor_file.replace('.csv', '_summary.txt')
-            if os.path.exists(summary_file):
-                with open(summary_file, 'r') as sf:
-                    for line in sf:
-                        if line.startswith("Max_RAM_MB"):
-                            max_ram = float(line.split('=')[1])
-                        elif line.startswith("Avg_CPU_Percent"):
-                            avg_cpu = float(line.split('=')[1])
-            if max_ram == 0 or avg_cpu == 0:
-                try:
-                    m_df = pd.read_csv(monitor_file)
-                    if not m_df.empty:
-                        max_ram = m_df['ram_mb'].max()
-                        avg_cpu = m_df['cpu_percent'].mean()
-                except Exception:
-                    pass
+            try:
+                m_df = pd.read_csv(monitor_file)
+                if not m_df.empty:
+                    max_ram = m_df['ram_mb'].max()
+                    avg_cpu = m_df['cpu_percent'].mean()
+                    std_cpu = m_df['cpu_percent'].std()
+                    var_cpu = m_df['cpu_percent'].var()
+                    std_ram = m_df['ram_mb'].std()
+                    var_ram = m_df['ram_mb'].var()
+            except Exception:
+                pass
 
         results.append({
             "Extractor": tool_name,
             "Attack": attack_name,
             "Packets": data.get("total_packets", 0),
             "Time (s)": round(data.get("time_seconds", 0), 2),
-            "Avg CPU (%)": round(avg_cpu, 2),
-            "Max RAM (MB)": round(max_ram, 2),
             "Throughput (PPS)": round(data.get("pps", 0), 2),
+            "Avg CPU (%)": round(avg_cpu, 2),
+            "Std CPU": round(std_cpu if pd.notna(std_cpu) else 0, 2),
+            "Var CPU": round(var_cpu if pd.notna(var_cpu) else 0, 2),
+            "Max RAM (MB)": round(max_ram, 2),
+            "Std RAM": round(std_ram if pd.notna(std_ram) else 0, 2),
+            "Var RAM": round(var_ram if pd.notna(var_ram) else 0, 2)
         })
 
     if not results:
@@ -69,23 +72,29 @@ def generate_detailed():
     out_dir = "./results/figures"
     os.makedirs(out_dir, exist_ok=True)
 
-    csv_out = os.path.join(out_dir, "benchmark_detailed.csv")
-    df.to_csv(csv_out, index=False)
+    def write_dataset(sub_df, prefix, caption):
+        if sub_df.empty: return
+        csv_out = os.path.join(out_dir, f"{prefix}.csv")
+        sub_df.to_csv(csv_out, index=False)
+        tex_out = os.path.join(out_dir, f"{prefix}.tex")
+        with open(tex_out, "w") as f:
+            f.write(sub_df.to_latex(index=False, caption=caption))
+
     print(f"\n=== Per-Attack Benchmark Breakdown ===")
     print(df.to_string(index=False))
+    
+    # Gerar Dataset Completo
+    write_dataset(df, "benchmark_detailed", "Per-Attack Computational Overhead and Throughput per Extractor")
 
-    latex = df.to_latex(
-        index=False,
-        caption="Per-Attack Computational Overhead and Throughput per Extractor",
-        label="tab:overhead_detailed",
-        column_format="llrrrrr"
-    )
-    tex_out = os.path.join(out_dir, "benchmark_detailed.tex")
-    with open(tex_out, "w") as f:
-        f.write(latex)
+    # Gerar Dataset Específico: DNS
+    df_dns = df[df['Attack'].str.contains('DNS', case=False, na=False)]
+    write_dataset(df_dns, "benchmark_dns_only", "Comparison of Extractors for DNS Attacks")
 
-    print(f"\nCSV  saved to {csv_out}")
-    print(f"LaTeX saved to {tex_out}")
+    # Gerar Dataset Específico: Syn Flood
+    df_syn = df[df['Attack'].str.contains('Syn', case=False, na=False)]
+    write_dataset(df_syn, "benchmark_syn_only", "Comparison of Extractors for Syn Flood Attacks")
+
+    print(f"\nCSV and LaTeX saved to {out_dir}")
 
 if __name__ == "__main__":
     generate_detailed()

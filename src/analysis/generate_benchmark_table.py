@@ -31,26 +31,23 @@ def generate_table():
         monitor_file = data.get("monitor_file")
         max_ram = 0
         avg_cpu = 0
+        std_cpu = 0
+        var_cpu = 0
+        std_ram = 0
+        var_ram = 0
         
         if monitor_file and os.path.exists(monitor_file):
-            summary_file = monitor_file.replace('.csv', '_summary.txt')
-            if os.path.exists(summary_file):
-                with open(summary_file, 'r') as sf:
-                    for line in sf:
-                        if line.startswith("Max_RAM_MB"):
-                            max_ram = float(line.split('=')[1])
-                        elif line.startswith("Avg_CPU_Percent"):
-                            avg_cpu = float(line.split('=')[1])
-            
-            # Recovery: If summary missing or stats are 0, try reading the raw CSV
-            if (max_ram == 0 or avg_cpu == 0):
-                try:
-                    m_df = pd.read_csv(monitor_file)
-                    if not m_df.empty:
-                        max_ram = m_df['ram_mb'].max()
-                        avg_cpu = m_df['cpu_percent'].mean()
-                except Exception:
-                    pass
+            try:
+                m_df = pd.read_csv(monitor_file)
+                if not m_df.empty:
+                    max_ram = m_df['ram_mb'].max()
+                    avg_cpu = m_df['cpu_percent'].mean()
+                    std_cpu = m_df['cpu_percent'].std()
+                    var_cpu = m_df['cpu_percent'].var()
+                    std_ram = m_df['ram_mb'].std()
+                    var_ram = m_df['ram_mb'].var()
+            except Exception:
+                pass
         
         results.append({
             "Extractor": tool_name,
@@ -58,7 +55,11 @@ def generate_table():
             "Time (s)": round(data.get("time_seconds", 0), 2),
             "Throughput (PPS)": round(data.get("pps", 0), 2),
             "Avg CPU (%)": round(avg_cpu, 2),
-            "Max RAM (MB)": round(max_ram, 2)
+            "Std CPU": round(std_cpu if pd.notna(std_cpu) else 0, 2),
+            "Var CPU": round(var_cpu if pd.notna(var_cpu) else 0, 2),
+            "Max RAM (MB)": round(max_ram, 2),
+            "Std RAM": round(std_ram if pd.notna(std_ram) else 0, 2),
+            "Var RAM": round(var_ram if pd.notna(var_ram) else 0, 2)
         })
 
     if not results:
@@ -71,26 +72,37 @@ def generate_table():
         "Total Packets": "sum",
         "Time (s)": "sum",
         "Avg CPU (%)": "mean",
-        "Max RAM (MB)": "max"
+        "Std CPU": "mean",
+        "Var CPU": "mean",
+        "Max RAM (MB)": "max",
+        "Std RAM": "mean",
+        "Var RAM": "mean",
     }).reset_index()
     
     df_agg["Throughput (PPS)"] = df_agg["Total Packets"] / df_agg["Time (s)"]
     df_agg["Throughput (PPS)"] = df_agg["Throughput (PPS)"].round(2)
     df_agg["Time (s)"] = df_agg["Time (s)"].round(2)
     df_agg["Avg CPU (%)"] = df_agg["Avg CPU (%)"].round(2)
+    df_agg["Std CPU"] = df_agg["Std CPU"].round(2)
+    df_agg["Var CPU"] = df_agg["Var CPU"].round(2)
+    df_agg["Std RAM"] = df_agg["Std RAM"].round(2)
+    df_agg["Var RAM"] = df_agg["Var RAM"].round(2)
     
     print("\n=== Benchmark Consolidation ===")
     print(df_agg.to_string(index=False))
     
-    # Generate LaTeX
-    latex_table = df_agg.to_latex(index=False, caption="Computational Overhead and Throughput per Extractor", label="tab:overhead")
-    
     out_file = "./results/figures/benchmark_table.tex"
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
     with open(out_file, "w") as f:
-        f.write(latex_table)
+        f.write(df_agg.to_latex(index=False, caption="Computational Overhead and Throughput per Extractor", label="tab:overhead"))
     
-    print(f"\nLaTeX table saved to {out_file}")
+    # Head to Head NTL vs CIC General Table
+    df_head2head = df_agg[df_agg['Extractor'].isin(['CICFlowMeter', 'NTLFlowLyzer'])]
+    h2h_file = "./results/figures/head_to_head_cic_ntl.tex"
+    with open(h2h_file, "w") as f:
+        f.write(df_head2head.to_latex(index=False, caption="General Head to Head Comparison: CICFlowMeter vs NTLFlowLyzer", label="tab:head2head"))
+
+    print(f"\nLaTeX tables saved to ./results/figures/")
 
 if __name__ == "__main__":
     generate_table()

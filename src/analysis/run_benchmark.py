@@ -5,7 +5,7 @@ import gc
 import warnings
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_score, recall_score
 from sklearn.preprocessing import LabelEncoder
 warnings.simplefilter(action='ignore', category=FutureWarning)
 """
@@ -161,17 +161,25 @@ def run_analysis():
                 
                 importances = rf.feature_importances_
                 train_cols = X_train.columns
+            # Add new metrics
             f1 = f1_score(y_test, y_pred, average='weighted')
-            print(f"    ✅ F1-Score: {f1:.4f}")
+            prec = precision_score(y_test, y_pred, average='weighted', zero_division=0)
+            rec = recall_score(y_test, y_pred, average='weighted', zero_division=0)
+            print(f"    ✅ F1-Score: {f1:.4f} | Precision: {prec:.4f} | Recall: {rec:.4f}")
             
-            # Print EXACT Top 10 Features formatted for LaTeX table
+            # Print EXACT Top 10 Features formatted for LaTeX table, including weight (mean importance) and std
+            importances_std = np.std([tree.feature_importances_ for tree in rf.estimators_], axis=0)
             indices = np.argsort(importances)[::-1]
             top_10 = []
             for i in range(min(10, len(indices))):
-                top_10.append(train_cols[indices[i]])
+                idx = indices[i]
+                feat = train_cols[idx]
+                mean_w = importances[idx]
+                std_w = importances_std[idx]
+                top_10.append(f"{feat} ({mean_w:.3f}±{std_w:.3f})")
                 
             tex_str = ", ".join(top_10).replace('_', '\\_')
-            print(f"    📋 LINHA LATEX: \n    {attack} & {ext_name} & {'Real' if test_path and train_path != test_path else 'Split'} & {f1:.4f} & \\scriptsize{{{tex_str}}} \\\\ \\hline\n")
+            print(f"    📋 LINHA LATEX: \n    {attack} & {ext_name} & {'Real' if test_path and train_path != test_path else 'Split'} & {prec:.4f} & {rec:.4f} & {f1:.4f} & \\scriptsize{{{tex_str}}} \\\\ \\hline\n")
             del rf, y_pred; gc.collect()
 if __name__ == "__main__":
     run_analysis()
