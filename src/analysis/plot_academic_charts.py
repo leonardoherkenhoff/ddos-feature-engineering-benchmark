@@ -17,7 +17,7 @@ def plot_flow_collapse():
     fig, ax1 = plt.subplots(figsize=(8, 6))
 
     extractors = ['CICFlowMeter', 'NTLFlowLyzer']
-    flows = [9.4, 0.416] # In millions
+    flows = [0.416, 9.4] # In millions
     ram = [9.13, 13.38] # In GB
 
     x = np.arange(len(extractors))
