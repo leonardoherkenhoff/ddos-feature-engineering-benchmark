@@ -107,6 +107,7 @@ def find_file(base_dir, day_folder, keyword):
             if keyword in f.lower(): return os.path.join(root, f)
     return None
 def run_analysis():
+    ml_results_db = []
     print("=== INICIANDO ANÁLISE ML UNIFICADA & EXTRAÇÃO DE FEATURES ===")
     print("Objetivo: Padronizar as Top 10 Features uniformemente para CIC, NTL e AL.\n")
     
@@ -167,6 +168,14 @@ def run_analysis():
             rec = recall_score(y_test, y_pred, average='weighted', zero_division=0)
             print(f"    ✅ F1-Score: {f1:.4f} | Precision: {prec:.4f} | Recall: {rec:.4f}")
             
+            ml_results_db.append({
+                'Extractor': ext_name,
+                'Attack': attack,
+                'F1-Score': f1,
+                'Precision': prec,
+                'Recall': rec
+            })
+            
             # Print EXACT Top 10 Features formatted for LaTeX table, including weight (mean importance) and std
             importances_std = np.std([tree.feature_importances_ for tree in rf.estimators_], axis=0)
             indices = np.argsort(importances)[::-1]
@@ -181,5 +190,10 @@ def run_analysis():
             tex_str = ", ".join(top_10).replace('_', '\\_')
             print(f"    📋 LINHA LATEX: \n    {attack} & {ext_name} & {'Real' if test_path and train_path != test_path else 'Split'} & {prec:.4f} & {rec:.4f} & {f1:.4f} & \\scriptsize{{{tex_str}}} \\\\ \\hline\n")
             del rf, y_pred; gc.collect()
+            
+    df_ml = pd.DataFrame(ml_results_db)
+    df_ml.to_csv(os.path.join(OUTPUT_DIR, 'ml_metrics.csv'), index=False)
+    print("\n[+] Exportação Concluída: ml_metrics.csv dinamicamente povoado.")
+
 if __name__ == "__main__":
     run_analysis()
