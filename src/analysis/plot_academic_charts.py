@@ -12,13 +12,22 @@ colors_main = ['#0072B2', '#D55E00']
 colors_secondary = ['#56B4E9', '#E69F00']
 
 # Base paths
-PCAP_RAW_PATH = os.environ.get('PCAP_RAW_PATH', '/root/CICDDoS2019/PCAP/01-12/Syn.pcap')
+DATA_RAW_DIR = './data/raw'
 DATA_PROCESSED_DIR = './data/processed'
 
-def get_pcap_packet_count(pcap_path):
+def find_pcap_path(keyword):
+    """Procura o PCAP desejado silenciosamente na pasta ./data/raw/"""
+    for root, _, files in os.walk(DATA_RAW_DIR):
+        for f in files:
+            if f.endswith('.pcap') and keyword.lower() in f.lower():
+                return os.path.join(root, f)
+    return None
+
+def get_pcap_packet_count(keyword):
     """Dynamically get real packet count from pcap using capinfos."""
-    if not os.path.exists(pcap_path):
-        print(f"    [AVISO] PCAP raiz {pcap_path} inacessível via ENV. Contagem atrelada ao limite lido.")
+    pcap_path = find_pcap_path(keyword)
+    if not pcap_path:
+        print(f"    [AVISO] Arquivo {keyword}.pcap não encontrado em {DATA_RAW_DIR}. Usando fallback.")
         return None
     try:
         cmd = ['capinfos', '-c', pcap_path]
@@ -60,7 +69,7 @@ def plot_flow_collapse():
         flows = [0.416, 9.4]
     
     # 2. Dynamic PCAP validation
-    true_packets = get_pcap_packet_count(PCAP_RAW_PATH)
+    true_packets = get_pcap_packet_count('Syn')
     if true_packets:
         packets_str = f"{true_packets/1e6:.1f}M Pacotes de Entrada"
     else:
