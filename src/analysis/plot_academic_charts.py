@@ -51,6 +51,16 @@ def count_csv_rows(filepath):
     except:
         return 0
 
+def find_csv_path(base_dir, keyword):
+    """Explora dinamicamente qualquer arquivo CSV dentro da sub-arvore."""
+    if not os.path.exists(base_dir): return None
+    keyword = keyword.lower()
+    for root, _, files in os.walk(base_dir):
+        for f in files:
+            if f.endswith('.csv') and 'semlabel' not in f.lower() and keyword in f.lower():
+                return os.path.join(root, f)
+    return None
+
 # =======================================================
 # 1. Flow Collapse & Memory Explosion Chart (Syn Flood)
 # =======================================================
@@ -60,8 +70,11 @@ def plot_flow_collapse():
     extractors = ['CICFlowMeter', 'NTLFlowLyzer']
     
     # 1. Dynamic Flow Gathering
-    flows_cic = count_csv_rows(os.path.join(DATA_PROCESSED_DIR, 'CIC/01-12_Syn.csv')) / 1e6
-    flows_ntl = count_csv_rows(os.path.join(DATA_PROCESSED_DIR, 'NTL/01-12_Syn.csv')) / 1e6
+    path_cic = find_csv_path(os.path.join(DATA_PROCESSED_DIR, 'CIC'), 'syn')
+    path_ntl = find_csv_path(os.path.join(DATA_PROCESSED_DIR, 'NTL'), 'syn')
+    
+    flows_cic = count_csv_rows(path_cic) / 1e6 if path_cic else 0
+    flows_ntl = count_csv_rows(path_ntl) / 1e6 if path_ntl else 0
     flows = [flows_cic, flows_ntl]
     
     # Se os zeros dominarem, manter valor visual para nao quebrar array
