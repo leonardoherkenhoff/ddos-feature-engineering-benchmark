@@ -56,30 +56,29 @@ def plot_flow_collapse():
     plt.close()
 
 # =======================================================
-# 2. Heuristic Blindness Chart (UDP & LDAP Recall Drop)
+# 2. F1-Blindness Chart (UDP & LDAP F1 Drop)
 # =======================================================
 def plot_f1_blindness():
-    # Constructing DataFrame based on empirical ML results
+    # Constructing DataFrame based on empirical ML results (F1-Scores)
     data = {
-        'Scenario': ['Syn', 'Syn', 'UDP', 'UDP', 'LDAP', 'LDAP'],
+        'Scenario': ['Syn (Ataque c/ Estado)', 'Syn (Ataque c/ Estado)', 'UDP (Ataque Stateless)', 'UDP (Ataque Stateless)', 'LDAP (Ataque Stateless)', 'LDAP (Ataque Stateless)'],
         'Extractor': ['CICFlowMeter', 'NTLFlowLyzer', 'CICFlowMeter', 'NTLFlowLyzer', 'CICFlowMeter', 'NTLFlowLyzer'],
-        'Recall': [1.00, 0.99, 0.99, 0.81, 0.90, 0.89],
-        'Precision': [1.00, 0.99, 0.99, 0.94, 0.99, 0.95]
+        'F1-Score': [0.999, 0.999, 0.994, 0.849, 0.947, 0.914]
     }
     df = pd.DataFrame(data)
 
     fig, ax = plt.subplots(figsize=(9, 6))
     
-    # Plotting Recall to highlight Falsos Negativos
+    # Plotting F1-Score to highlight 'F1 Blindness'
     sns.barplot(
         data=df, 
-        x='Scenario', y='Recall', hue='Extractor',
+        x='Scenario', y='F1-Score', hue='Extractor',
         palette=colors_main, edgecolor='black', ax=ax
     )
 
     # Adding values on top of bars
     for p in ax.patches:
-        ax.annotate(f"{p.get_height():.2f}", 
+        ax.annotate(f"{p.get_height():.3f}", 
                     (p.get_x() + p.get_width() / 2., p.get_height()), 
                     ha='center', va='center', fontsize=12, fontweight='bold', 
                     color='black', xytext=(0, 10), textcoords='offset points')
@@ -87,9 +86,9 @@ def plot_f1_blindness():
     ax.set_ylim(0, 1.1)
     ax.axhline(1.0, color='gray', linestyle='--', linewidth=1)
     
-    ax.set_xlabel('Vetor de Ataque', fontweight='bold', fontsize=14)
-    ax.set_ylabel('Taxa de Recall', fontweight='bold', fontsize=14)
-    plt.title('Cegueira Heurística (Recall): Protocolos Stateful vs Stateless\n', fontweight='bold')
+    ax.set_xlabel('Vetor de Ataque (L3/L4)', fontweight='bold', fontsize=12)
+    ax.set_ylabel('Métrica Consolidada (F1-Score)', fontweight='bold', fontsize=12)
+    plt.title('Cegueira Heurística (F1-Blindness): Colapso Preditivo em Protocolos Stateless\n', fontweight='bold')
     
     # Move legend outside
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
