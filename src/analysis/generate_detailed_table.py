@@ -83,16 +83,20 @@ def generate_detailed():
     print(f"\n=== Per-Attack Benchmark Breakdown ===")
     print(df.to_string(index=False))
     
-    # Gerar Dataset Completo
-    write_dataset(df, "benchmark_detailed", "Per-Attack Computational Overhead and Throughput per Extractor")
+    # Gerar Dataset Completo Detalhado
+    write_dataset(df, "benchmark_detailed", "Desempenho Sistêmico e Consumo de Infraestrutura Analítico por Extrator")
 
     # Gerar Dataset Específico: DNS
     df_dns = df[df['Attack'].str.contains('DNS', case=False, na=False)]
-    write_dataset(df_dns, "benchmark_dns_only", "Comparison of Extractors for DNS Attacks")
+    write_dataset(df_dns, "benchmark_dns_only", "Desempenho Sistêmico e Consumo de Infraestrutura por Extrator (Ataque de Exaustão de Camada 7 L7 - Amplificação DNS)")
 
     # Gerar Dataset Específico: Syn Flood
     df_syn = df[df['Attack'].str.contains('Syn', case=False, na=False)]
-    write_dataset(df_syn, "benchmark_syn_only", "Comparison of Extractors for Syn Flood Attacks")
+    write_dataset(df_syn, "benchmark_syn_only", "Desempenho Sistêmico e Consumo de Infraestrutura por Extrator (Ataque de Camada Oculta - TCP Syn Flood)")
+    
+    # Head-to-Head Syn Flood (CIC vs NTL only, though AL doesn't parse Syn naturally, this enforces it)
+    df_syn_h2h = df_syn[df_syn['Extractor'].isin(['CICFlowMeter', 'NTLFlowLyzer'])]
+    write_dataset(df_syn_h2h, "head_to_head_cic_ntl_syn", "Desempenho Sistêmico e Consumo de Infraestrutura por Extrator (Comparativo Direto CIC vs NTL - TCP Syn Flood)")
 
     print(f"\nCSV and LaTeX saved to {out_dir}")
 

@@ -91,16 +91,16 @@ def generate_table():
     print("\n=== Benchmark Consolidation ===")
     print(df_agg.to_string(index=False))
     
-    out_file = "./results/figures/benchmark_table.tex"
+    out_file = "./results/figures/benchmark_table_geral.tex"
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
     with open(out_file, "w") as f:
-        f.write(df_agg.to_latex(index=False, caption="Computational Overhead and Throughput per Extractor", label="tab:overhead"))
+        f.write(df_agg.to_latex(index=False, caption="Desempenho Sistêmico e Consumo de Infraestrutura por Extrator (Geral - Todos os Extratores)", label="tab:overhead_geral"))
     
     # Head to Head NTL vs CIC General Table
     df_head2head = df_agg[df_agg['Extractor'].isin(['CICFlowMeter', 'NTLFlowLyzer'])]
-    h2h_file = "./results/figures/head_to_head_cic_ntl.tex"
+    h2h_file = "./results/figures/head_to_head_cic_ntl_geral.tex"
     with open(h2h_file, "w") as f:
-        f.write(df_head2head.to_latex(index=False, caption="General Head to Head Comparison: CICFlowMeter vs NTLFlowLyzer", label="tab:head2head"))
+        f.write(df_head2head.to_latex(index=False, caption="Desempenho Sistêmico e Consumo de Infraestrutura por Extrator (Geral - CIC vs NTL)", label="tab:overhead_cic_ntl"))
 
     print(f"\nLaTeX tables saved to ./results/figures/")
 
