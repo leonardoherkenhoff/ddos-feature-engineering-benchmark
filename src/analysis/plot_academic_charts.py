@@ -37,6 +37,24 @@ def plot_flow_collapse():
     ax2.tick_params(axis='y', labelcolor=colors_main[1])
     ax2.set_ylim(0, 15)
 
+    # Annotate Flow Bars
+    for rect in bars1:
+        height = rect.get_height()
+        ax1.annotate(f'{height}M',
+                    xy=(rect.get_x() + rect.get_width() / 2, height),
+                    xytext=(0, 3),  
+                    textcoords="offset points",
+                    ha='center', va='bottom', fontweight='bold', color=colors_main[0])
+
+    # Annotate RAM Bars
+    for rect in bars2:
+        height = rect.get_height()
+        ax2.annotate(f'{height}GB',
+                    xy=(rect.get_x() + rect.get_width() / 2, height),
+                    xytext=(0, 3),  
+                    textcoords="offset points",
+                    ha='center', va='bottom', fontweight='bold', color=colors_main[1])
+                    
     ax1.set_xticks(x)
     ax1.set_xticklabels(extractors, fontweight='bold')
     
@@ -52,7 +70,7 @@ def plot_flow_collapse():
     import os
     if not os.path.exists('./results/figures'):
         os.makedirs('./results/figures')
-    plt.savefig('./results/figures/flow_collapse_v2.pdf', format='pdf', bbox_inches='tight')
+    plt.savefig('./results/figures/flow_collapse_v3.pdf', format='pdf', bbox_inches='tight')
     plt.close()
 
 # =======================================================
