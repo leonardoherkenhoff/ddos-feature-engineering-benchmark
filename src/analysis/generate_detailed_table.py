@@ -53,14 +53,14 @@ def generate_detailed():
             "Extractor": tool_name,
             "Attack": attack_name,
             "Packets": data.get("total_packets", 0),
-            "Time (s)": round(data.get("time_seconds", 0), 2),
-            "Throughput (PPS)": round(data.get("pps", 0), 2),
-            "Avg CPU (%)": round(avg_cpu, 2),
-            "Std CPU": round(std_cpu if pd.notna(std_cpu) else 0, 2),
-            "Var CPU": round(var_cpu if pd.notna(var_cpu) else 0, 2),
-            "Max RAM (MB)": round(max_ram, 2),
-            "Std RAM": round(std_ram if pd.notna(std_ram) else 0, 2),
-            "Var RAM": round(var_ram if pd.notna(var_ram) else 0, 2)
+            "Time (s)": round(data.get("time_seconds", 0), 4),
+            "Throughput (PPS)": round(data.get("pps", 0), 4),
+            "Avg CPU (%)": round(avg_cpu, 4),
+            "Std CPU": round(std_cpu if pd.notna(std_cpu) else 0, 4),
+            "Var CPU": round(var_cpu if pd.notna(var_cpu) else 0, 4),
+            "Max RAM (MB)": round(max_ram, 4),
+            "Std RAM": round(std_ram if pd.notna(std_ram) else 0, 4),
+            "Var RAM": round(var_ram if pd.notna(var_ram) else 0, 4)
         })
 
     if not results:

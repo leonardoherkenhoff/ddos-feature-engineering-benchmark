@@ -52,14 +52,14 @@ def generate_table():
         results.append({
             "Extractor": tool_name,
             "Total Packets": data.get("total_packets", 0),
-            "Time (s)": round(data.get("time_seconds", 0), 2),
-            "Throughput (PPS)": round(data.get("pps", 0), 2),
-            "Avg CPU (%)": round(avg_cpu, 2),
-            "Std CPU": round(std_cpu if pd.notna(std_cpu) else 0, 2),
-            "Var CPU": round(var_cpu if pd.notna(var_cpu) else 0, 2),
-            "Max RAM (MB)": round(max_ram, 2),
-            "Std RAM": round(std_ram if pd.notna(std_ram) else 0, 2),
-            "Var RAM": round(var_ram if pd.notna(var_ram) else 0, 2)
+            "Time (s)": round(data.get("time_seconds", 0), 4),
+            "Throughput (PPS)": round(data.get("pps", 0), 4),
+            "Avg CPU (%)": round(avg_cpu, 4),
+            "Std CPU": round(std_cpu if pd.notna(std_cpu) else 0, 4),
+            "Var CPU": round(var_cpu if pd.notna(var_cpu) else 0, 4),
+            "Max RAM (MB)": round(max_ram, 4),
+            "Std RAM": round(std_ram if pd.notna(std_ram) else 0, 4),
+            "Var RAM": round(var_ram if pd.notna(var_ram) else 0, 4)
         })
 
     if not results:
@@ -80,13 +80,13 @@ def generate_table():
     }).reset_index()
     
     df_agg["Throughput (PPS)"] = df_agg["Total Packets"] / df_agg["Time (s)"]
-    df_agg["Throughput (PPS)"] = df_agg["Throughput (PPS)"].round(2)
-    df_agg["Time (s)"] = df_agg["Time (s)"].round(2)
-    df_agg["Avg CPU (%)"] = df_agg["Avg CPU (%)"].round(2)
-    df_agg["Std CPU"] = df_agg["Std CPU"].round(2)
-    df_agg["Var CPU"] = df_agg["Var CPU"].round(2)
-    df_agg["Std RAM"] = df_agg["Std RAM"].round(2)
-    df_agg["Var RAM"] = df_agg["Var RAM"].round(2)
+    df_agg["Throughput (PPS)"] = df_agg["Throughput (PPS)"].round(4)
+    df_agg["Time (s)"] = df_agg["Time (s)"].round(4)
+    df_agg["Avg CPU (%)"] = df_agg["Avg CPU (%)"].round(4)
+    df_agg["Std CPU"] = df_agg["Std CPU"].round(4)
+    df_agg["Var CPU"] = df_agg["Var CPU"].round(4)
+    df_agg["Std RAM"] = df_agg["Std RAM"].round(4)
+    df_agg["Var RAM"] = df_agg["Var RAM"].round(4)
     
     print("\n=== Benchmark Consolidation ===")
     print(df_agg.to_string(index=False))
