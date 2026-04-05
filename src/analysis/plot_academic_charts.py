@@ -49,7 +49,10 @@ def plot_flow_collapse():
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper center', bbox_to_anchor=(0.5, -0.15), fancybox=True, shadow=True, ncol=2)
     
     plt.tight_layout()
-    plt.savefig('/home/leo/.gemini/antigravity/playground/obsidian-planck/flow_collapse_v2.pdf', format='pdf', bbox_inches='tight')
+    import os
+    if not os.path.exists('./results/figures'):
+        os.makedirs('./results/figures')
+    plt.savefig('./results/figures/flow_collapse_v2.pdf', format='pdf', bbox_inches='tight')
     plt.close()
 
 # =======================================================
@@ -92,7 +95,10 @@ def plot_f1_blindness():
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
     
     plt.tight_layout()
-    plt.savefig('/home/leo/.gemini/antigravity/playground/obsidian-planck/f1_blindness_v2.pdf', format='pdf', bbox_inches='tight')
+    import os
+    if not os.path.exists('./results/figures'):
+        os.makedirs('./results/figures')
+    plt.savefig('./results/figures/f1_blindness_v2.pdf', format='pdf', bbox_inches='tight')
     plt.close()
 
 if __name__ == "__main__":
