@@ -66,6 +66,32 @@ def find_csv_path(base_dir, keyword):
                 return os.path.join(root, f)
     return None
 
+def count_all_csv_rows(base_dir, keyword):
+    """Soma as linhas de TODOS os CSVs correspondentes (todos os dias/subpastas)."""
+    if not os.path.exists(base_dir):
+        print(f"    [AVISO] Diretório {base_dir} não encontrado.")
+        return 0
+    keyword = keyword.lower()
+    total = 0
+    found = []
+    for root, _, files in os.walk(base_dir):
+        for f in files:
+            f_lower = f.lower()
+            if (f.endswith('.csv')
+                    and 'semlabel' not in f_lower
+                    and not f_lower.startswith('monitor_')
+                    and keyword in f_lower):
+                path = os.path.join(root, f)
+                rows = count_csv_rows(path)
+                total += rows
+                found.append(f"{path} ({rows:,} linhas)")
+    if found:
+        print(f"    [INFO] Arquivos somados para '{keyword}' em {base_dir}:")
+        for s in found: print(f"        {s}")
+    else:
+        print(f"    [AVISO] Nenhum CSV '{keyword}' encontrado em {base_dir}.")
+    return total
+
 # =======================================================
 # 1. Flow Collapse & Memory Explosion Chart (Syn Flood)
 # =======================================================
@@ -74,12 +100,9 @@ def plot_flow_collapse():
 
     extractors = ['CICFlowMeter', 'NTLFlowLyzer']
     
-    # 1. Dynamic Flow Gathering (a partir dos CSVs RAW brutos de cada extrator)
-    path_cic = find_csv_path(os.path.join(DATA_INTERIM_DIR, 'CIC_RAW'), 'syn')
-    path_ntl = find_csv_path(os.path.join(DATA_INTERIM_DIR, 'NTL_RAW'), 'syn')
-    
-    flows_cic = count_csv_rows(path_cic) / 1e6 if path_cic else 0
-    flows_ntl = count_csv_rows(path_ntl) / 1e6 if path_ntl else 0
+    # 1. Dynamic Flow Gathering: soma todos os CSVs Syn de todos os dias
+    flows_cic = count_all_csv_rows(os.path.join(DATA_INTERIM_DIR, 'CIC_RAW'), 'syn') / 1e6
+    flows_ntl = count_all_csv_rows(os.path.join(DATA_INTERIM_DIR, 'NTL_RAW'), 'syn') / 1e6
     flows = [flows_cic, flows_ntl]
     
     # Se os zeros dominarem, manter valor visual para nao quebrar array
