@@ -14,6 +14,7 @@ colors_secondary = ['#56B4E9', '#E69F00']
 # Base paths
 DATA_RAW_DIR = './data/raw'
 DATA_PROCESSED_DIR = './data/processed'
+DATA_INTERIM_DIR = './data/interim'
 
 def find_pcap_path(keyword):
     """Procura o PCAP desejado silenciosamente na pasta ./data/raw/"""
@@ -57,7 +58,11 @@ def find_csv_path(base_dir, keyword):
     keyword = keyword.lower()
     for root, _, files in os.walk(base_dir):
         for f in files:
-            if f.endswith('.csv') and 'semlabel' not in f.lower() and keyword in f.lower():
+            f_lower = f.lower()
+            if (f.endswith('.csv')
+                    and 'semlabel' not in f_lower
+                    and not f_lower.startswith('monitor_')  # excluir logs de hardware
+                    and keyword in f_lower):
                 return os.path.join(root, f)
     return None
 
@@ -69,9 +74,9 @@ def plot_flow_collapse():
 
     extractors = ['CICFlowMeter', 'NTLFlowLyzer']
     
-    # 1. Dynamic Flow Gathering
-    path_cic = find_csv_path(os.path.join(DATA_PROCESSED_DIR, 'CIC'), 'syn')
-    path_ntl = find_csv_path(os.path.join(DATA_PROCESSED_DIR, 'NTL'), 'syn')
+    # 1. Dynamic Flow Gathering (a partir dos CSVs RAW brutos de cada extrator)
+    path_cic = find_csv_path(os.path.join(DATA_INTERIM_DIR, 'CIC_RAW'), 'syn')
+    path_ntl = find_csv_path(os.path.join(DATA_INTERIM_DIR, 'NTL_RAW'), 'syn')
     
     flows_cic = count_csv_rows(path_cic) / 1e6 if path_cic else 0
     flows_ntl = count_csv_rows(path_ntl) / 1e6 if path_ntl else 0
