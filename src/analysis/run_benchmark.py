@@ -192,7 +192,7 @@ def run_analysis():
             del rf, y_pred; gc.collect()
             
     df_ml = pd.DataFrame(ml_results_db)
-    df_ml.to_csv(os.path.join(OUTPUT_DIR, 'ml_metrics.csv'), index=False)
+    df_ml.to_csv(os.path.join(OUTPUT_DIR, 'ml_metrics.csv'), index=False, float_format='%.6f')
     print("\n[+] Exportação Concluída: ml_metrics.csv dinamicamente povoado.")
 
 if __name__ == "__main__":

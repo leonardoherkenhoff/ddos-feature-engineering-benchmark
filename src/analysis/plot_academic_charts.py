@@ -204,9 +204,9 @@ def plot_f1_blindness():
     for p in ax.patches:
         height = p.get_height()
         if not np.isnan(height):
-            ax.annotate(f"{height:.3f}", 
+            ax.annotate(f"{height:.4f}", 
                         (p.get_x() + p.get_width() / 2., height), 
-                        ha='center', va='center', fontsize=12, fontweight='bold', 
+                        ha='center', va='center', fontsize=11, fontweight='bold', 
                         color='black', xytext=(0, 10), textcoords='offset points')
 
     ax.set_ylim(0, 1.1)
