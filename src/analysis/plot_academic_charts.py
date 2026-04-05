@@ -59,7 +59,7 @@ def plot_flow_collapse():
     ax1.set_xticklabels(extractors, fontweight='bold')
     
     # Title and Layout
-    plt.title('Colapso de Agregação vs. Consumo de Memória\n(TCP Syn Flood - 5M Pacotes)', fontweight='bold', pad=15)
+    plt.title('Colapso de Agregação vs. Consumo de Memória\n(Ataque TCP Syn Flood)', fontweight='bold', pad=15)
     
     # Combined Legend
     lines1, labels1 = ax1.get_legend_handles_labels()
