@@ -152,8 +152,9 @@ def plot_flow_collapse():
         cic_ram = df_syn[df_syn['Extractor'] == 'CICFlowMeter']['Max RAM (MB)']
         ntl_ram = df_syn[df_syn['Extractor'] == 'NTLFlowLyzer']['Max RAM (MB)']
         
-        ram[0] = cic_ram.values[0] / 1024.0 if not cic_ram.empty else 0.0
-        ram[1] = ntl_ram.values[0] / 1024.0 if not ntl_ram.empty else 0.0
+        # Usar pico máximo entre todos os dias de captura Syn
+        ram[0] = cic_ram.max() / 1024.0 if not cic_ram.empty else 0.0
+        ram[1] = ntl_ram.max() / 1024.0 if not ntl_ram.empty else 0.0
 
     if sum(ram) == 0:
         ram = [9.13, 13.38]
