@@ -42,7 +42,14 @@ def get_pcap_packet_count(keyword):
             result = subprocess.run(cmd, capture_output=True, text=True)
             for line in result.stdout.splitlines():
                 if 'Number of packets:' in line:
-                    count = int(line.split(':')[1].strip().replace(',', '').replace('.', ''))
+                    raw = line.split(':')[1].strip()
+                    # capinfos pode retornar "2582 k" ou "2.58 M" dependendo da versao/locale
+                    if raw.endswith(' k'):
+                        count = int(float(raw[:-2].strip()) * 1_000)
+                    elif raw.endswith(' M'):
+                        count = int(float(raw[:-2].strip()) * 1_000_000)
+                    else:
+                        count = int(raw.replace(',', '').replace('.', ''))
                     total += count
                     break
         except Exception as e:
