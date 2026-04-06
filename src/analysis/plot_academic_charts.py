@@ -16,30 +16,41 @@ DATA_RAW_DIR = './data/raw'
 DATA_PROCESSED_DIR = './data/processed'
 DATA_INTERIM_DIR = './data/interim'
 
-def find_pcap_path(keyword):
-    """Procura o PCAP desejado silenciosamente na pasta ./data/raw/"""
-    for root, _, files in os.walk(DATA_RAW_DIR):
+def find_pcap_dir(keyword):
+    """Encontra TODOS os PCAPs dentro de subpastas cujo caminho contenha o keyword.
+    Segue symlinks (necessário para data/raw/PCAP -> /root/CICDDoS2019/PCAP)."""
+    matches = []
+    for root, _, files in os.walk(DATA_RAW_DIR, followlinks=True):
+        # Keyword deve estar no caminho do diretório, nao no nome do arquivo
+        if keyword.lower() not in root.lower():
+            continue
         for f in files:
-            if f.endswith('.pcap') and keyword.lower() in f.lower():
-                return os.path.join(root, f)
-    return None
+            if f.endswith('.pcap'):
+                matches.append(os.path.join(root, f))
+    return matches
 
 def get_pcap_packet_count(keyword):
-    """Dynamically get real packet count from pcap using capinfos."""
-    pcap_path = find_pcap_path(keyword)
-    if not pcap_path:
-        print(f"    [AVISO] Arquivo {keyword}.pcap não encontrado em {DATA_RAW_DIR}. Usando fallback.")
+    """Soma o total de pacotes de todos os PCAPs no ataque via capinfos."""
+    pcap_files = find_pcap_dir(keyword)
+    if not pcap_files:
+        print(f"    [AVISO] Nenhum PCAP '{keyword}' encontrado em {DATA_RAW_DIR}. Usando fallback.")
         return None
-    try:
-        cmd = ['capinfos', '-c', pcap_path]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        for line in result.stdout.splitlines():
-            if 'Number of packets:' in line:
-                return int(line.split(':')[1].strip().replace(',', '').replace('.', ''))
+    total = 0
+    for pcap_path in pcap_files:
+        try:
+            cmd = ['capinfos', '-c', pcap_path]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            for line in result.stdout.splitlines():
+                if 'Number of packets:' in line:
+                    count = int(line.split(':')[1].strip().replace(',', '').replace('.', ''))
+                    total += count
+                    break
+        except Exception as e:
+            print(f"    [AVISO] capinfos falhou em {pcap_path}: {e}")
+    if total == 0:
         return None
-    except Exception as e:
-        print(f"    [AVISO] Leitura Dinâmica do PCAP Falhou: {e}")
-        return None
+    print(f"    [INFO] Total de pacotes PCAP para '{keyword}': {total:,} ({len(pcap_files)} arquivos)")
+    return total
 
 def count_csv_rows(filepath):
     """Fast row counting for massive Extractor CSVs"""
