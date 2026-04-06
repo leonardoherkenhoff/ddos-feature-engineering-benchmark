@@ -45,9 +45,9 @@ def get_pcap_packet_count(keyword):
                     raw = line.split(':')[1].strip()
                     # capinfos pode retornar "2582 k" ou "2.58 M" dependendo da versao/locale
                     if raw.endswith(' k'):
-                        count = int(float(raw[:-2].strip()) * 1_000)
+                        count = int(float(raw[:-2].strip().replace(',', '')) * 1_000)
                     elif raw.endswith(' M'):
-                        count = int(float(raw[:-2].strip()) * 1_000_000)
+                        count = int(float(raw[:-2].strip().replace(',', '')) * 1_000_000)
                     else:
                         count = int(raw.replace(',', '').replace('.', ''))
                     total += count
@@ -128,21 +128,20 @@ def plot_flow_collapse():
         flows = [0.416, 9.4]
     
     # 2. Dynamic PCAP validation
+    bench_csv = './results/figures/benchmark_detailed.csv'  # escopo completo da funcao
     true_packets = get_pcap_packet_count('Syn')
     if true_packets:
         packets_str = f"{true_packets/1e6:.1f}M Pacotes de Entrada"
     else:
-        # Tenta pegar total de pacotes lendo o log de benchmark se capinfos falhar
-        bench_csv = './results/figures/benchmark_detailed.csv'
         if os.path.exists(bench_csv):
              df_b = pd.read_csv(bench_csv)
              df_b_syn = df_b[df_b['Attack'].str.contains('Syn', case=False, na=False)]
              if not df_b_syn.empty:
-                 packets_str = f"{df_b_syn.iloc[0]['Packets']/1e6:.1f}M Pacotes Processados"
+                 packets_str = f"{df_b_syn['Packets'].sum()/1e6:.1f}M Pacotes Processados"
              else:
-                 packets_str = "Volumetria L4 Dinâmica"
+                 packets_str = "Volumetria L4 Dinamica"
         else:
-             packets_str = "Volumetria L4 Dinâmica"
+             packets_str = "Volumetria L4 Dinamica"
 
     # 3. Dynamic RAM gathering
     ram = [0.0, 0.0]
