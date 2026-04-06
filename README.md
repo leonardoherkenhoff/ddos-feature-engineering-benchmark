@@ -2,7 +2,7 @@
 
 ![Architecture Diagram](results/figures/architecture_diagram.png)
 
-This repository contains the source code for the paper **"The Impact of Feature Engineering on Data Quality: A Comparative Study of Extractors for DDoS Detection"**, submitted to SBRC 2026.
+This repository contains the source code for the paper **"The Impact of Feature Engineering on Data Quality: A Comparative Study of Extractors for DDoS Detection"**.
 
 ## 📌 Overview
 We benchmark three feature extractors using the CICDDoS2019 dataset to evaluate how Transport Layer (L4) and Application Layer (L7) features impact Machine Learning detection models.
