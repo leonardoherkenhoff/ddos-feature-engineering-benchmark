@@ -81,7 +81,15 @@ def run_extraction():
             env["JAVA_OPTS"] = env.get("JAVA_OPTS", "") + f" -Djava.library.path={app_home}/lib/native -Xmx12g"
 
             try:
-                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, env=env)
+                result = subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, env=env)
+                if result.stderr.strip():
+                    jvm_log = os.path.join(target_dir, f"jvm_stderr_{os.path.basename(pcap)}.log")
+                    with open(jvm_log, 'w') as jf:
+                        jf.write(result.stderr)
+                    if any(kw in result.stderr for kw in ['OutOfMemoryError', 'GC overhead', 'heap space']):
+                        print(f"⚠️  ALERTA JVM: possível truncagem silenciosa em {filename}! Ver {jvm_log}")
+                    else:
+                        print(f"⚠️  JVM stderr não-vazio para {filename}. Ver {jvm_log}")
                 print(f"✅ Success: {filename}")
             except subprocess.CalledProcessError as e:
                 print(f"❌ Error processing {filename} (Code {e.returncode}):\n{e.stderr}")
