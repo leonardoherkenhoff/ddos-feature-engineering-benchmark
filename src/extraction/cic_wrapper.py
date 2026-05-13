@@ -74,11 +74,24 @@ def run_extraction():
         
         for pcap in pcaps:
             filename = os.path.basename(pcap)
+            
+            # Resolve absolute path of CIC_EXEC to handle native library discovery
+            import shutil
+            cic_abs_path = shutil.which(CIC_EXEC)
+            if cic_abs_path:
+                # Resolve symlinks to find the actual installation directory
+                cic_real_path = os.path.realpath(cic_abs_path)
+                app_home = os.path.abspath(os.path.join(os.path.dirname(cic_real_path), ".."))
+            else:
+                app_home = os.getcwd() # Fallback
+
             cmd = [CIC_EXEC, pcap, target_dir]
             
             env = os.environ.copy()
-            app_home = os.path.abspath(os.path.join(os.path.dirname(CIC_EXEC), ".."))
-            env["JAVA_OPTS"] = env.get("JAVA_OPTS", "") + f" -Djava.library.path={app_home}/lib/native -Xmx12g"
+            native_lib_path = os.path.join(app_home, "lib", "native")
+            env["JAVA_OPTS"] = env.get("JAVA_OPTS", "") + f" -Djava.library.path={native_lib_path} -Xmx12g"
+            # Explicitly set LD_LIBRARY_PATH to help the linker find libjnetpcap.so
+            env["LD_LIBRARY_PATH"] = env.get("LD_LIBRARY_PATH", "") + f":{native_lib_path}"
 
             try:
                 result = subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, env=env)
