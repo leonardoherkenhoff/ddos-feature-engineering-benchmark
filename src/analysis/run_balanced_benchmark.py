@@ -34,6 +34,9 @@ DIRS = {
 }
 OUTPUT_DIR = "./results/balanced"
 ATTACK_KEYWORDS = ['DNS', 'LDAP', 'MSSQL', 'NetBIOS', 'NTP', 'SNMP', 'SSDP', 'UDP', 'Syn', 'TFTP', 'UDPLag', 'Portmap']
+# ALFlowLyzer only extracts Application Layer (L7) DNS traffic.
+# Running it against L3/L4 attack vectors would produce no data.
+AL_ATTACK_KEYWORDS = ['DNS']
 SAFE_THRESHOLD = 500 * 1024 * 1024  # 500 MB
 CHUNK_SIZE = 200_000
 MAX_ROWS_PER_FILE = 2_500_000
@@ -214,6 +217,9 @@ def run_balanced_analysis():
         print(f"{'=' * 50}")
 
         for ext_name, ext_root in DIRS.items():
+            # ALFlowLyzer only has data for DNS attack vectors
+            if ext_name == 'AL' and attack not in AL_ATTACK_KEYWORDS:
+                continue
             gc.collect()
 
             # --- Locate files ---
