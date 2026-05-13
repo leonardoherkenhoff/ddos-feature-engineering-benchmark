@@ -71,26 +71,37 @@ def run_extraction():
         monitor_proc = subprocess.Popen([sys.executable, monitor_script, str(os.getpid()), monitor_csv])
         
         total_packets = get_packet_count(pcaps)
-        
         for pcap in pcaps:
             filename = os.path.basename(pcap)
-            
-            # Resolve absolute path of CIC_EXEC to handle native library discovery
+            # Smart discovery of jnetpcap native library
             import shutil
             cic_abs_path = shutil.which(CIC_EXEC)
+            native_lib_path = None
             if cic_abs_path:
-                # Resolve symlinks to find the actual installation directory
                 cic_real_path = os.path.realpath(cic_abs_path)
-                app_home = os.path.abspath(os.path.join(os.path.dirname(cic_real_path), ".."))
-            else:
-                app_home = os.getcwd() # Fallback
+                search_root = os.path.dirname(cic_real_path)
+                for _ in range(5):
+                    if os.path.exists(os.path.join(search_root, "jnetpcap", "linux", "jnetpcap-1.4.r1425")):
+                        native_lib_path = os.path.join(search_root, "jnetpcap", "linux", "jnetpcap-1.4.r1425")
+                        break
+                    # Fallback to walk if specific path not found
+                    for root, dirs, files in os.walk(search_root):
+                        if "libjnetpcap.so" in files:
+                            native_lib_path = root
+                            break
+                        if native_lib_path: break
+                    if native_lib_path: break
+                    new_root = os.path.dirname(search_root)
+                    if new_root == search_root: break
+                    search_root = new_root
+            
+            if not native_lib_path:
+                app_home = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(shutil.which(CIC_EXEC) or "")), ".."))
+                native_lib_path = os.path.join(app_home, "lib", "native")
 
             cmd = [CIC_EXEC, pcap, target_dir]
-            
             env = os.environ.copy()
-            native_lib_path = os.path.join(app_home, "lib", "native")
             env["JAVA_OPTS"] = env.get("JAVA_OPTS", "") + f" -Djava.library.path={native_lib_path} -Xmx12g"
-            # Explicitly set LD_LIBRARY_PATH to help the linker find libjnetpcap.so
             env["LD_LIBRARY_PATH"] = env.get("LD_LIBRARY_PATH", "") + f":{native_lib_path}"
 
             try:
