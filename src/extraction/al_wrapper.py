@@ -80,7 +80,7 @@ def run_extraction():
         if "DNS" in pcap:
             pcap_dirs.add(os.path.dirname(pcap))
             
-    sys.path.append(os.path.dirname(__file__))
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     try:
         from concat_utils import process_directory
     except ImportError:
@@ -102,40 +102,42 @@ def run_extraction():
         monitor_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "monitor.py")
         monitor_proc = subprocess.Popen([sys.executable, monitor_script, str(os.getpid()), monitor_csv])
         
-        total_packets = get_packet_count(pcaps)
-        
-        tasks = [(p, target_dir) for p in pcaps]
-        if tasks:
-            with Pool(NUM_WORKERS) as pool:
-                for result in pool.imap_unordered(process_file, tasks):
-                    print(result)
-
-        # Post processing: Concatenate CSVs per Directory
-        print(f"Consolidating fragmented CSVs for {attack_name}...")
-        process_directory(target_dir, attack_name)
-
-        end_time = time.time()
-        elapsed = end_time - start_time
-        pps = total_packets / elapsed if elapsed > 0 else 0
-        
-        monitor_proc.terminate()
         try:
-            monitor_proc.wait(timeout=5)
-        except:
-            monitor_proc.kill()
+            total_packets = get_packet_count(pcaps)
             
-        benchmark_log = os.path.join(target_dir, f"benchmark_{attack_name}.json")
-        with open(benchmark_log, 'w') as f:
-            json.dump({
-                "attack": attack_name,
-                "tool": "ALFlowLyzer", 
-                "total_packets": total_packets, 
-                "time_seconds": elapsed, 
-                "pps": pps,
-                "monitor_file": monitor_csv
-            }, f, indent=4)
+            tasks = [(p, target_dir) for p in pcaps]
+            if tasks:
+                with Pool(NUM_WORKERS) as pool:
+                    for result in pool.imap_unordered(process_file, tasks):
+                        print(result)
+
+            # Post processing: Concatenate CSVs per Directory
+            print(f"Consolidating fragmented CSVs for {attack_name}...")
+            process_directory(target_dir, attack_name)
+
+            end_time = time.time()
+            elapsed = end_time - start_time
+            pps = total_packets / elapsed if elapsed > 0 else 0
             
-        print(f"📊 Benchmark: {total_packets} packets | {elapsed:.2f}s | {pps:.2f} pps")
+            benchmark_log = os.path.join(target_dir, f"benchmark_{attack_name}.json")
+            with open(benchmark_log, 'w') as f:
+                json.dump({
+                    "attack": attack_name,
+                    "tool": "ALFlowLyzer", 
+                    "total_packets": total_packets, 
+                    "time_seconds": elapsed, 
+                    "pps": pps,
+                    "monitor_file": monitor_csv
+                }, f, indent=4)
+                
+            print(f"📊 Benchmark: {total_packets} packets | {elapsed:.2f}s | {pps:.2f} pps")
+
+        finally:
+            monitor_proc.terminate()
+            try:
+                monitor_proc.wait(timeout=5)
+            except:
+                monitor_proc.kill()
 
 if __name__ == "__main__":
     run_extraction()

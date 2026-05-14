@@ -157,95 +157,79 @@ def process_attack(input_pcap_dir, output_csv_dir, attack_name):
     import sys
     monitor_proc = subprocess.Popen([sys.executable, monitor_script, str(os.getpid()), monitor_csv])
     
-    total_packets = get_packet_count(pcaps)
-
-    run_cmd(f"mergecap -F pcap -w '{merged_pcap}' " + " ".join([f"'{p}'" for p in pcaps]))
-
-
-    # Step 2: Split into safe chunks
-
-    run_cmd(f"editcap -c {CHUNK_SIZE} -F pcap '{merged_pcap}' '{os.path.join(work_dir, 'chunk.pcap')}'")
-
-    chunks = sorted(glob.glob(os.path.join(work_dir, "chunk*.pcap")))
-
-
-    # Step 3: Parallel extraction
-
-    tasks = [(c, c.replace(".pcap", ".csv"), c.replace(".pcap", ".json")) for c in chunks]
-
-    with Pool(NUM_WORKERS) as pool:
-
-        results = list(pool.imap_unordered(worker_task, tasks))
-
-    
-
-    if results.count(True) < (len(chunks) * 0.99): 
-
-        print(f"   ❌ CRITICAL ERROR: High failure rate during extraction.")
-
-        return
-
-
-    # Step 4: Merge resulting CSVs
-
-    csv_parts = [f for f in sorted(glob.glob(os.path.join(work_dir, "chunk*.csv"))) if os.path.exists(f)]
-
-    if csv_parts:
-
-        first = True
-        with open(final_csv, 'w') as outfile:
-
-            for csv_part in csv_parts:
-
-                with open(csv_part, 'r') as infile:
-                    header = infile.readline()
-                    if first:
-                        outfile.write(header)
-                        first = False
-                    shutil.copyfileobj(infile, outfile)
-
-        print(f"✅ DONE: {final_csv}")
-
-        shutil.rmtree(work_dir, ignore_errors=True)
-
-
-
-    # NEW: end profiling
-
-    end_time = time.time()
-
-    elapsed = end_time - start_time
-    pps = total_packets / elapsed if elapsed > 0 else 0
-    
-    monitor_proc.terminate()
     try:
-        monitor_proc.wait(timeout=5)
-    except:
-        monitor_proc.kill()
+        total_packets = get_packet_count(pcaps)
 
-    benchmark_log = os.path.join(output_csv_dir, f"benchmark_{attack_name}.json")
+        # Step 1: Merge raw PCAPs
+        try:
+            run_cmd(f"mergecap -F pcap -w '{merged_pcap}' " + " ".join([f"'{p}'" for p in pcaps]))
+        except Exception as e:
+            print(f"⚠️  Mergecap failed for {attack_name}. Attempting to sanitize PCAPs...")
+            sanitized_pcaps = []
+            for p in pcaps:
+                s_p = os.path.join(work_dir, f"fixed_{os.path.basename(p)}")
+                try:
+                    # editcap -F pcap often fixes "cut short" errors by dropping the bad packet
+                    subprocess.run(f"editcap -F pcap '{p}' '{s_p}'", shell=True, check=True, 
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    sanitized_pcaps.append(s_p)
+                except:
+                    print(f"❌ Skipping irreparably corrupted PCAP: {p}")
+            
+            if not sanitized_pcaps:
+                print(f"❌ All PCAPs for {attack_name} are corrupted. Skipping scenario.")
+                return
 
-    with open(benchmark_log, 'w') as f:
+            run_cmd(f"mergecap -F pcap -w '{merged_pcap}' " + " ".join([f"'{p}'" for p in sanitized_pcaps]))
 
-        json.dump({
+        # Step 2: Split into safe chunks
+        run_cmd(f"editcap -c {CHUNK_SIZE} -F pcap '{merged_pcap}' '{os.path.join(work_dir, 'chunk.pcap')}'")
+        chunks = sorted(glob.glob(os.path.join(work_dir, "chunk*.pcap")))
 
-            "attack": attack_name,
-
-            "tool": "NTLFlowLyzer",
-
-            "total_packets": total_packets, 
-
-            "time_seconds": elapsed, 
-
-            "pps": pps,
-
-            "monitor_file": monitor_csv
-
-        }, f, indent=4)
-
+        # Step 3: Parallel extraction
+        tasks = [(c, c.replace(".pcap", ".csv"), c.replace(".pcap", ".json")) for c in chunks]
+        with Pool(NUM_WORKERS) as pool:
+            results = list(pool.imap_unordered(worker_task, tasks))
         
+        if results.count(True) < (len(chunks) * 0.90): # Relaxed to 90% for corrupted datasets
+            print(f"   ❌ CRITICAL ERROR: High failure rate during extraction for {attack_name}.")
+            return
 
-    print(f"📊 Benchmark: {total_packets} packets | {elapsed:.2f}s | {pps:.2f} pps")
+        # Step 4: Merge resulting CSVs
+        csv_parts = [f for f in sorted(glob.glob(os.path.join(work_dir, "chunk*.csv"))) if os.path.exists(f)]
+        if csv_parts:
+            first = True
+            with open(final_csv, 'w') as outfile:
+                for csv_part in csv_parts:
+                    with open(csv_part, 'r') as infile:
+                        header = infile.readline()
+                        if first:
+                            outfile.write(header)
+                            first = False
+                        shutil.copyfileobj(infile, outfile)
+            print(f"✅ DONE: {final_csv}")
+            shutil.rmtree(work_dir, ignore_errors=True)
+
+        end_time = time.time()
+        elapsed = end_time - start_time
+        pps = total_packets / elapsed if elapsed > 0 else 0
+        
+        benchmark_log = os.path.join(output_csv_dir, f"benchmark_{attack_name}.json")
+        with open(benchmark_log, 'w') as f:
+            json.dump({
+                "attack": attack_name, "tool": "NTLFlowLyzer",
+                "total_packets": total_packets, "time_seconds": elapsed, 
+                "pps": pps, "monitor_file": monitor_csv
+            }, f, indent=4)
+            
+        print(f"📊 Benchmark: {total_packets} packets | {elapsed:.2f}s | {pps:.2f} pps")
+
+    finally:
+        monitor_proc.terminate()
+        try:
+            monitor_proc.wait(timeout=5)
+        except:
+            monitor_proc.kill()
 
 
 def run_extraction():
