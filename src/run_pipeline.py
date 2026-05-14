@@ -22,18 +22,21 @@ EXTRACTORS = [
         'extract': 'src/extraction/cic_wrapper.py',
         'label':   'src/preprocessing/cic_labeler.py',
         'interim': './data/interim/CIC_RAW',
+        'processed': './data/processed/CIC',
     },
     {
         'name': 'NTLFlowLyzer',
         'extract': 'src/extraction/ntl_wrapper.py',
         'label':   'src/preprocessing/ntl_labeler.py',
         'interim': './data/interim/NTL_RAW',
+        'processed': './data/processed/NTL',
     },
     {
         'name': 'ALFlowLyzer',
         'extract': 'src/extraction/al_wrapper.py',
         'label':   'src/preprocessing/al_labeler.py',
         'interim': './data/interim/AL_RAW',
+        'processed': './data/processed/AL',
     },
 ]
 
@@ -72,6 +75,17 @@ def run_stage(description, script_path):
     return True
 
 
+def has_processed_data(processed_dir):
+    """Check if processed directory already contains labeled CSVs."""
+    if not os.path.exists(processed_dir):
+        return False
+    import glob
+    csvs = glob.glob(os.path.join(processed_dir, '**', '*.csv'), recursive=True)
+    # Filter out monitor/benchmark files
+    data_csvs = [c for c in csvs if not os.path.basename(c).startswith(('monitor_', 'benchmark_'))]
+    return len(data_csvs) > 0
+
+
 def cleanup_interim(interim_dir, extractor_name):
     """Removes interim directory to reclaim disk space."""
     if not os.path.exists(interim_dir):
@@ -99,6 +113,11 @@ def main():
 
     if not args.skip_extraction:
         for ext in EXTRACTORS:
+            # Idempotency check: skip if processed data already exists
+            if has_processed_data(ext['processed']):
+                print(f"\n⏭️  {ext['name']}: dados processados já existem em {ext['processed']}. Pulando.")
+                continue
+
             # Phase 1: Extraction
             ok = run_stage(f"Extração: {ext['name']}", ext['extract'])
             if not ok:
